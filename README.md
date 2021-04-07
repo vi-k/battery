@@ -1,6 +1,6 @@
 # battery
 
-A new flutter plugin project.
+A flutter plugin for getting battery status.
 
 ## Getting Started
 
