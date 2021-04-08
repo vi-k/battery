@@ -58,16 +58,23 @@ class BatteryStatus {
       '    technology: $technology';
 }
 
+/// Плагин для получения информации о состоянии батареи.
+///
+/// Battery.status - текущее состояние батареи (без создания экземпляра класса).
+/// setListener - установка слушателя.
+/// removeListener - удаление слушателя.
+/// pause - ставит прослушивание на паузу.
+/// resume - снимает прослушивание с паузы.
 class Battery {
   static const MethodChannel _channel = const MethodChannel('battery');
   static const String getBatteryStatusMethod = 'getBatteryStatus';
-  static const String onBatteryStatusChangedMethod = 'onBatteryStatusChanged';
-  static const String setBatteryListenerMethod = 'setBatteryListener';
-  static const String removeBatteryListenerMethod = 'removeBatteryListener';
+  static const String onBatteryChangedMethod = 'onBatteryChanged';
+  static const String startListeningMethod = 'startListening';
+  static const String stopListeningMethod = 'stopListening';
 
   Battery() {
     _channel.setMethodCallHandler((call) async {
-      if (call.method == onBatteryStatusChangedMethod) {
+      if (call.method == onBatteryChangedMethod) {
         final status = call.arguments as List?;
         if (status != null) {
           _listener?.call(await _statusFromList(status));
@@ -77,8 +84,13 @@ class Battery {
   }
 
   void Function(BatteryStatus)? _listener;
+
+  /// Установлен ли слушатель?
   bool get hasListener => _listener != null;
 
+  /// Текущее состояние батареи.
+  ///
+  /// Статический геттер. Не нуждается в создании экземпляра класса.
   static Future<BatteryStatus?> get status async {
     final List? result = await _channel.invokeMethod(getBatteryStatusMethod);
     if (result == null) return null;
@@ -86,6 +98,7 @@ class Battery {
     return _statusFromList(result);
   }
 
+  // Преобразует данные (список значений) с натива в структуру BatteryStatus.
   static Future<BatteryStatus> _statusFromList(List list) async {
     return BatteryStatus(
       level: list[0],
@@ -98,23 +111,31 @@ class Battery {
     );
   }
 
+  /// Устанавливает слушателя.
+  ///
+  /// В одном экземпляре класса можеть буть только один слушатель.
   Future<void> setListener(void Function(BatteryStatus) listener) async {
     _listener = listener;
-    await _channel.invokeMethod(setBatteryListenerMethod);
+    await _channel.invokeMethod(startListeningMethod);
   }
 
+  /// Удаляет слушателя.
   Future<void> removeListener() async {
     _listener = null;
-    await _channel.invokeMethod(removeBatteryListenerMethod);
+    await _channel.invokeMethod(stopListeningMethod);
   }
 
+  /// Ставит прослушивание на паузу.
+  ///
+  /// Слушатель при этом не удаляется.
   Future<void> pause() async {
-    await _channel.invokeMethod(removeBatteryListenerMethod);
+    await _channel.invokeMethod(stopListeningMethod);
   }
 
+  /// Восстанавливает прослушивание после паузы, если слушатель установлен.
   Future<void> resume() async {
     if (_listener != null) {
-      await _channel.invokeMethod(setBatteryListenerMethod);
+      await _channel.invokeMethod(startListeningMethod);
     }
   }
 }

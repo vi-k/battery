@@ -13,8 +13,11 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 
-/** BatteryPlugin */
-
+/**
+ * Android-часть плагина Battery.
+ *
+ * Работает через MethodChannel.
+ */
 class BatteryPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var binding: FlutterPlugin.FlutterPluginBinding
@@ -28,14 +31,17 @@ class BatteryPlugin : FlutterPlugin, MethodCallHandler {
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         when (call.method) {
+            // Текущее состояние батареи.
             getBatteryStatusMethod -> {
                 result.success(getBatteryStatus())
             }
-            setBatteryListenerMethod -> {
-                setListener()
+            // Запуск прослушивания.
+            startListeningMethod -> {
+                createAndRegisterReceiver()
                 result.success(true)
             }
-            removeBatteryListenerMethod -> {
+            // Остановка прослушивания.
+            stopListeningMethod -> {
                 unregisterReceiver()
                 result.success(true)
             }
@@ -50,35 +56,18 @@ class BatteryPlugin : FlutterPlugin, MethodCallHandler {
         unregisterReceiver()
     }
 
-    private fun registerReceiver(batteryReceiver: BroadcastReceiver?): Intent? {
-        return IntentFilter(Intent.ACTION_BATTERY_CHANGED).let {
-            binding.applicationContext.registerReceiver(batteryReceiver, it)
-        }
-    }
-
-    private fun unregisterReceiver() {
-        if (batteryReceiver != null) {
-            binding.applicationContext.unregisterReceiver(batteryReceiver)
-            batteryReceiver = null
-        }
-    }
-
     private fun getBatteryStatus(): List<Any>? {
         val batteryStatus: Intent = registerReceiver(null) ?: return null
-
         return getBatteryStatusFromIntent(batteryStatus)
     }
 
     private fun getBatteryStatusFromIntent(batteryStatus: Intent): List<Any> {
         val level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) * 100 /
                 batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-
         val status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING
                 || status == BatteryManager.BATTERY_STATUS_FULL
-
         val chargePlugged = batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1)
-
         val health = batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1)
         val temperature = batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1)
         val voltage = batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)
@@ -108,22 +97,35 @@ class BatteryPlugin : FlutterPlugin, MethodCallHandler {
         )
     }
 
-    private fun setListener() {
+    private fun createAndRegisterReceiver() {
         unregisterReceiver()
         batteryReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent) {
                 val status = getBatteryStatusFromIntent(intent)
-                channel.invokeMethod(onBatteryStatusChangedMethod, status)
+                channel.invokeMethod(onBatteryChangedMethod, status)
             }
         }
         registerReceiver(batteryReceiver)
     }
 
+    private fun registerReceiver(batteryReceiver: BroadcastReceiver?): Intent? {
+        return IntentFilter(Intent.ACTION_BATTERY_CHANGED).let {
+            binding.applicationContext.registerReceiver(batteryReceiver, it)
+        }
+    }
+
+    private fun unregisterReceiver() {
+        if (batteryReceiver != null) {
+            binding.applicationContext.unregisterReceiver(batteryReceiver)
+            batteryReceiver = null
+        }
+    }
+
     companion object {
         const val methodChannel: String = "battery"
         const val getBatteryStatusMethod: String = "getBatteryStatus"
-        const val onBatteryStatusChangedMethod: String = "onBatteryStatusChanged"
-        const val setBatteryListenerMethod: String = "setBatteryListener"
-        const val removeBatteryListenerMethod: String = "removeBatteryListener"
+        const val onBatteryChangedMethod: String = "onBatteryChanged"
+        const val startListeningMethod: String = "startListening"
+        const val stopListeningMethod: String = "stopListening"
     }
 }

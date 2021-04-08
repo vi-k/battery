@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:battery/battery.dart';
 
+/// Пример работы с плагином Battery.
 void main() {
   runApp(MyApp());
 }
@@ -12,6 +13,7 @@ class MyApp extends StatefulWidget {
   _MyAppState createState() => _MyAppState();
 }
 
+/// Вспомогательный класс для анимации изменённых значений.
 class AnimatedValue<T> extends ValueNotifier<T> {
   AnimatedValue(T value) : super(value);
 
@@ -53,6 +55,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _batteryLevel.dispose();
     _batteryIsCharging.dispose();
     _batteryChargePlugged.dispose();
+    _batteryHealth.dispose();
+    _batteryTemperature.dispose();
+    _batteryVoltage.dispose();
+    _batteryTechnology.dispose();
+    _listen.dispose();
     battery.removeListener();
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
@@ -74,7 +81,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) => MaterialApp(
         home: Scaffold(
           appBar: AppBar(
-            title: const Text('Plugin example app'),
+            title: const Text('Battery plugin example app'),
           ),
           body: Center(
             child: Column(
@@ -100,8 +107,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                   _batteryHealth,
                   (value) => value?.name ?? '-',
                 ),
-                _buildValue<int?>('Temperature', _batteryTemperature,
-                    (value) => '${value ?? '-'}'),
+                _buildValue<int?>(
+                  'Temperature',
+                  _batteryTemperature,
+                  (value) => '${value ?? '-'}',
+                ),
                 _buildValue<int?>(
                   'Voltage',
                   _batteryVoltage,
